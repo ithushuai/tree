@@ -1,4 +1,4 @@
-package rbtree;
+package tree.rbtree;
 
 /**
  * created by it_hushuai
@@ -11,14 +11,14 @@ public class RBTree<K extends Comparable<K>, V> {
     /**
      * 根节点引用
      */
-    private RBNode root;
+    private RBNode<K, V> root;
 
     static class RBNode<K extends Comparable<K>, V> {
         K key;
         V value;
-        RBNode left;
-        RBNode right;
-        RBNode parent;
+        RBNode<K, V> left;
+        RBNode<K, V> right;
+        RBNode<K, V> parent;
         boolean color = BLACK;
 
         public void setValue(V value) {
@@ -59,6 +59,14 @@ public class RBTree<K extends Comparable<K>, V> {
     private static void setColor(RBNode p, boolean c) {
         if (p != null)
             p.color = c;
+    }
+
+    private static RBNode leftOf(RBNode node) {
+        return (node == null) ? null: node.left;
+    }
+
+    private static RBNode rightOf(RBNode node) {
+        return (node == null) ? null: node.right;
     }
 
     /**
@@ -227,5 +235,189 @@ public class RBTree<K extends Comparable<K>, V> {
                 }
             }
         }
+    }
+
+    /**
+     * 删除节点，并返回删除的节点
+     * @param key
+     * @return
+     */
+    public V remove(K key) {
+        RBNode<K, V> p = getRBNode(key);// 根据key找到待删除节点
+        if (p == null) {
+            return null;
+        }
+        V oldValue = p.value;
+        deleteRBNode(p);
+        return oldValue;
+    }
+
+    /**
+     * 删除指定节点
+     * 删除：
+     * 1.待删除节点没有子节点
+     * 2.待删除节点只有一个子节点
+     * 3.待删除节点有两个子节点
+     * 当待删除节点有两个子节点时，用其后继节点的值替代待删除节点，然后转化为删除后继节点，后继节点只有一个或者没有子节点
+     * @param p
+     */
+    private void deleteRBNode(RBNode<K,V> p) {
+        // 如果待删除结点有两个子节点，需要找到其后继节点，然后转化为删除后继节点
+        if (p.left != null && p.right != null) {
+            // 1.找到后继节点
+            RBNode<K, V> s = successor(p);
+            // 2.用后继节点的属性替换待删除节点（键和值）
+            p.key = s.key;
+            p.value = s.value;
+            // 3.p指向后继节点，接下来就是对后继节点进行删除
+            p = s;
+        }
+        // 如果待删除节点有一个子节点，可以用待删除节点的子节点替换待删除节点的位置，再对剩下的节点做修正
+        RBNode<K, V> r = (p.left != null ? p.left : p.right);// r是p的子节点，优先找左子节点，如果没有则取右子节点
+        if (r != null) { // 有一个子节点
+            r.parent = p.parent;
+            if (p.parent == null) {
+                r = root;
+            } else if (p.parent.left == p) {
+                p.parent.left = r;
+            } else {
+                p.parent.right = r;
+            }
+            p.left = p.right = p.parent = null;
+            if (p.color == BLACK) { // 如果p为黑，删除p后路径上黑色-1，则需要进行修正
+                fixAfterDeletion(r);
+            }
+        } else if (p.parent == null) {
+            root = null;
+        } else { // 没有子节点
+            if (p.color == BLACK) { // 待删除节点为黑色，且没有子节点，先对节点进行修正
+                fixAfterDeletion(p);
+            }
+            // 最后删除p
+            if (p.parent != null) {
+                if (p.parent.left == p) {
+                    p.parent.left = null;
+                } else {
+                    p.parent.right = null;
+                }
+                p.parent = null;
+            }
+        }
+    }
+
+    /**
+     * 修正红黑树（删除）
+     * 针对的节点没有子节点,且需要调整颜色或者旋转的情形
+     * 在修正时，由于待操作节点并没有真正删除，所以可以看成是黑色值-1
+     * @param x
+     */
+    private void fixAfterDeletion(RBNode<K,V> x) {
+        while (x != root && colorOf(x) == BLACK) { // “向上追溯”
+            if (x == leftOf(parentOf(x))) { // 需要修正的节点是父节点的左子节点
+                RBNode<K,V> xr = rightOf(parentOf(x));// 兄弟节点
+                if (colorOf(xr) == RED) { // 情形九，转化成情形二三四
+                    setColor(xr, BLACK);
+                    setColor(parentOf(x), RED);
+                    rotateLeft(parentOf(x));
+                    xr = rightOf(parentOf(x));
+                }
+                // 情形一在父节点变红后，就退出循环，然后将父节点涂黑；情形五，需要向上追溯，直到不再是情形五
+                if (colorOf(leftOf(xr)) == BLACK
+                        && colorOf(rightOf(xr)) == BLACK) {
+                    setColor(xr, RED);
+                    x = parentOf(x);
+                } else { // 无须向上追溯
+                    if (colorOf(rightOf(xr)) == BLACK) { // 情形二转化为情形三、情形六转化为情形七
+                        setColor(xr, RED);
+                        setColor(leftOf(xr), BLACK);
+                        rotateRight(xr);
+                        xr = rightOf(parentOf(x));
+                    }
+                    // 转化后的共性操作
+                    setColor(xr, colorOf(parentOf(x)));
+                    setColor(rightOf(xr), BLACK);
+                    setColor(parentOf(x), BLACK);
+                    rotateLeft(parentOf(x));
+                    x = root; // 跳出循环
+                }
+            } else { // 对称
+                RBNode<K,V> xl = x.parent.left;
+                if (colorOf(xl) == RED) {
+                    setColor(xl, BLACK);
+                    setColor(parentOf(x), RED);
+                    rotateRight(parentOf(x));
+                    xl = leftOf(parentOf(x));
+                }
+
+                if (colorOf(rightOf(xl)) == BLACK &&
+                        colorOf(leftOf(xl)) == BLACK) {
+                    setColor(xl, RED);
+                    x = parentOf(x);
+                } else {
+                    if (colorOf(leftOf(xl)) == BLACK) {
+                        setColor(rightOf(xl), BLACK);
+                        setColor(xl, RED);
+                        rotateLeft(xl);
+                        xl = leftOf(parentOf(x));
+                    }
+                    setColor(xl, colorOf(parentOf(x)));
+                    setColor(parentOf(x), BLACK);
+                    setColor(leftOf(xl), BLACK);
+                    rotateRight(parentOf(x));
+                    x = root;
+                }
+            }
+        }
+        setColor(x, BLACK);
+    }
+
+    /**
+     * 返回某个节点的后继节点
+     * @param t
+     * @return
+     */
+    private RBNode<K,V> successor(RBNode<K,V> t) {
+        if (t == null) {
+            return null;
+        }
+        // 如果t有右子节点，则后继节点就是t的右子树的最左侧节点（右子树最小的节点）
+        // 如果t没有右子节点，那么有两种情况：
+        // 1.t是其父节点的左子节点，那么他的后继节点就是父节点
+        // 2.t是其父节点的右子节点，那么就不断往上追溯找父节点，看是否能找到一个节点p，使得t在p的左子树中，那么首次找到的p
+        // 就是t的后继节点，因为此时p的键是比t键大的最小节点。如果找到根节点都找不到符合条件的p，那么说明t在根节点的右侧，
+        // 那么t的后继节点只能是null
+        if (t.right != null) {
+            RBNode<K, V> s = t.right;
+            while (s.left != null) {
+                s = s.left;
+            }
+            return s;
+        } else { // 这种场景用不到，这里只是求到了比当前节点大的所有节点中最小的
+            RBNode<K, V> p = t.parent;
+            RBNode<K, V> cur = t;
+            while (p != null && p.right == cur) {
+                cur = p;
+                p = p.parent;
+            }
+            return p;
+        }
+    }
+
+    private RBNode<K, V> getRBNode(K key) {
+        if (key == null) {
+            throw new NullPointerException();
+        }
+        RBNode<K, V> p = root;
+        while (p != null) {
+            int cmp = key.compareTo(p.key);
+            if (cmp > 0) {
+                p = p.right;
+            } else if (cmp < 0) {
+                p = p.left;
+            } else {
+                return p;
+            }
+        }
+        return null;
     }
 }

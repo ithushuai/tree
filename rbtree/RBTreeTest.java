@@ -1,6 +1,7 @@
-package rbtree;
+package tree.rbtree;
 
 import java.util.Scanner;
+import java.util.TreeMap;
 
 /**
  * created by it_hushuai
@@ -8,14 +9,23 @@ import java.util.Scanner;
  */
 public class RBTreeTest {
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+        TreeMap treeMap = new TreeMap();
+        treeMap.put(1, 1);
+        treeMap.put(2, 2);
+        treeMap.put(3, 3);
+        treeMap.put(4, 4);
+        treeMap.put(5, 5);
+        treeMap.put(6, 6);
+
+        treeMap.remove(1);
+
         RBTree<String, Object> tree = new RBTree<>();
-        while (true) {
-            System.out.println("请输入key：");
-            String key = scanner.next();
+        for (int i = 1; i <= 6; i++) {
             RBTree.RBNode rbNode = new RBTree.RBNode();
-            rbNode.key = key;
+            rbNode.key = i + "";
             tree.insert(rbNode);
         }
+        tree.remove("1");
+        System.out.println();
     }
 }
